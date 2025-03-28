@@ -1,0 +1,206 @@
+{% extends 'text_to_speech_app/base.html' %}
+
+{% load crispy_forms_tags %}
+
+{% block title %}テキスト読み上げ＆要約アプリ - ホーム{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h2><i class="fas fa-microphone-alt"></i> テキスト読み上げ＆要約</h2>
+            </div>
+            <div class="card-body">
+                <ul class="nav nav-tabs mb-3" id="inputTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="text-tab" data-bs-toggle="tab" data-bs-target="#text-content" type="button" role="tab">
+                            <i class="fas fa-keyboard"></i> テキスト入力
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="pdf-tab" data-bs-toggle="tab" data-bs-target="#pdf-content" type="button" role="tab">
+                            <i class="fas fa-file-pdf"></i> PDFアップロード
+                        </button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content" id="inputTabsContent">
+                    <!-- テキスト入力タブ -->
+                    <div class="tab-pane fade show active" id="text-content" role="tabpanel" aria-labelledby="text-tab">
+                        <form method="post" action="{% url 'text_to_speech_app:process_text' %}">
+                            {% csrf_token %}
+                            
+                            <div class="mb-3">
+                                {{ form.title|as_crispy_field }}
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label"><strong>入力ソース</strong></label>
+                                <div class="btn-group w-100 mb-3" role="group">
+                                    {% for radio in form.source_type %}
+                                    <input type="radio" class="btn-check" name="{{ form.source_type.name }}" 
+                                           id="{{ radio.id_for_label }}" value="{{ radio.choice_value }}"
+                                           {% if radio.choice_value == 'text' %}checked{% endif %}
+                                           autocomplete="off">
+                                    <label class="btn btn-outline-primary" for="{{ radio.id_for_label }}">
+                                        {{ radio.choice_label }}
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            
+                            <div id="text-input-section" class="form-section active mb-4">
+                                {{ form.text_input|as_crispy_field }}
+                            </div>
+                            
+                            <div id="url-input-section" class="form-section mb-4">
+                                {{ form.url|as_crispy_field }}
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label"><strong>実行する機能</strong></label>
+                                <div class="row mb-3">
+                                    {% for radio in form.feature_choice %}
+                                    <div class="col-md-6 mb-2">
+                                        <div class="form-check">
+                                            {{ radio.tag }}
+                                            <label class="form-check-label" for="{{ radio.id_for_label }}">
+                                                {{ radio.choice_label }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            
+                            <div id="summary-options" class="mb-3">
+                                <label class="form-label"><strong>要約の長さ</strong></label>
+                                <div class="row mb-3">
+                                    {% for radio in form.summary_length %}
+                                    <div class="col-md-4 mb-2">
+                                        <div class="form-check">
+                                            {{ radio.tag }}
+                                            <label class="form-check-label" for="{{ radio.id_for_label }}">
+                                                {{ radio.choice_label }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                
+                                <div id="custom-length-section" class="mb-3" style="display: none;">
+                                    {{ form.custom_length|as_crispy_field }}
+                                </div>
+                            </div>
+                            
+                            <div id="voice-options" class="mb-3">
+                                <label class="form-label"><strong>音声の種類</strong></label>
+                                <div class="row mb-3">
+                                    {% for radio in form.voice_type %}
+                                    <div class="col-md-4 mb-2">
+                                        <div class="form-check">
+                                            {{ radio.tag }}
+                                            <label class="form-check-label" for="{{ radio.id_for_label }}">
+                                                {{ radio.choice_label }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-cogs"></i> 処理開始
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- PDFアップロードタブ -->
+                    <div class="tab-pane fade" id="pdf-content" role="tabpanel" aria-labelledby="pdf-tab">
+                        <form method="post" action="{% url 'text_to_speech_app:upload_pdf' %}" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            
+                            <div class="mb-3">
+                                {{ pdf_form.title|as_crispy_field }}
+                            </div>
+                            
+                            <div class="mb-3">
+                                {{ pdf_form.pdf_file|as_crispy_field }}
+                                <div class="form-text">サポートされている形式: PDF</div>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-file-upload"></i> PDFをアップロード
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 入力ソースの切り替え
+        var sourceTypeRadios = document.querySelectorAll('input[name="source_type"]');
+        sourceTypeRadios.forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                document.querySelectorAll('.form-section').forEach(function(section) {
+                    section.classList.remove('active');
+                });
+                
+                if (this.value === 'text') {
+                    document.getElementById('text-input-section').classList.add('active');
+                } else if (this.value === 'url') {
+                    document.getElementById('url-input-section').classList.add('active');
+                }
+            });
+        });
+        
+        // 要約長さのカスタム入力の表示/非表示
+        var summaryLengthRadios = document.querySelectorAll('input[name="summary_length"]');
+        var customLengthSection = document.getElementById('custom-length-section');
+        
+        summaryLengthRadios.forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                if (this.value === 'custom') {
+                    customLengthSection.style.display = 'block';
+                } else {
+                    customLengthSection.style.display = 'none';
+                }
+            });
+        });
+        
+        // 機能選択による要約・音声オプションの表示/非表示
+        var featureRadios = document.querySelectorAll('input[name="feature_choice"]');
+        var summaryOptions = document.getElementById('summary-options');
+        var voiceOptions = document.getElementById('voice-options');
+        
+        featureRadios.forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                if (this.value === '1') {
+                    // 読み上げのみ
+                    summaryOptions.style.display = 'none';
+                    voiceOptions.style.display = 'block';
+                } else if (this.value === '2') {
+                    // 要約のみ
+                    summaryOptions.style.display = 'block';
+                    voiceOptions.style.display = 'none';
+                } else {
+                    // 要約と読み上げ
+                    summaryOptions.style.display = 'block';
+                    voiceOptions.style.display = 'block';
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}
